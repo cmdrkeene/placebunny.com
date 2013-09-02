@@ -3,7 +3,6 @@ package bunny
 import (
 	"os"
 	"image"
-	"image/draw"
 	"image/jpeg"
 	"code.google.com/p/graphics-go/graphics"
 	"io"
@@ -35,35 +34,29 @@ func load(path string, info os.FileInfo, err error) error {
 	return nil
 }
 
-func randomSource() image.Image {
-	return sources[rand.Intn(len(sources))]
-}
-
-func New(x string, y string) *Bunny {
+// Write bunny in requested resolution from cache, generate if missing
+func Write(w io.Writer, x string, y string) error {
 	xi, _ := strconv.Atoi(x)
 	yi, _ := strconv.Atoi(y)
-	return &Bunny{x:xi,y:yi}
-}
 
-type Bunny struct {
-	y int
-	x int
-	img draw.Image
-}
+	img, err := generate(xi, yi)
+	if err != nil {
+		return err
+	}
 
-func (b *Bunny) Thumbnail() error {
-	b.img = image.NewRGBA(image.Rect(0, 0, b.x, b.y))
-	err := graphics.Thumbnail(b.img, randomSource())
+	err = jpeg.Encode(w, img, nil)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (b *Bunny) Write(w io.Writer) error {
-	err := jpeg.Encode(w, b.img, nil)
+func generate(x int, y int) (image.Image, error) {
+	dst := image.NewRGBA(image.Rect(0, 0, x, y))
+	src := sources[rand.Intn(len(sources))]
+	err := graphics.Thumbnail(dst, src)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return dst, nil
 }

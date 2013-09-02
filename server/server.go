@@ -34,12 +34,8 @@ func scaled(w http.ResponseWriter, req *http.Request) {
 	x := req.URL.Query().Get(":x")
 	y := req.URL.Query().Get(":y")
 
-	b := bunny.New(x, y)
-	err := b.Thumbnail()
-	check(err)
-
 	w.Header().Set("Content-Type", "image/jpeg")
-	b.Write(w)
+	bunny.Write(w, x, y)
 }
 
 func errorHandler(fn http.HandlerFunc) http.HandlerFunc {
