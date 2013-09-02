@@ -8,15 +8,20 @@ import (
 	"code.google.com/p/graphics-go/graphics"
 	"io"
 	"strconv"
+	"path/filepath"
+	"math/rand"
 )
 
-var source image.Image
+var sources []image.Image
 
 func init() {
-	source = load("sources/bunny.jpg")
+	filepath.Walk("sources", load)
 }
 
-func load(path string) image.Image {
+func load(path string, info os.FileInfo, err error) error {
+	if info.IsDir() {
+		return nil
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		panic(err)
@@ -26,7 +31,12 @@ func load(path string) image.Image {
 	if err != nil {
 		panic(err)
 	}
-	return img
+	sources = append(sources, img)
+	return nil
+}
+
+func randomSource() image.Image {
+	return sources[rand.Intn(len(sources))]
 }
 
 func New(x string, y string) *Bunny {
@@ -43,7 +53,7 @@ type Bunny struct {
 
 func (b *Bunny) Thumbnail() error {
 	b.img = image.NewRGBA(image.Rect(0, 0, b.x, b.y))
-	err := graphics.Thumbnail(b.img, source)
+	err := graphics.Thumbnail(b.img, randomSource())
 	if err != nil {
 		return err
 	}
