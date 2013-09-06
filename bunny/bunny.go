@@ -9,12 +9,18 @@ import (
 	"strconv"
 	"path/filepath"
 	"math/rand"
+	"time"
+	"log"
+	"fmt"
+	cache "github.com/pmylund/go-cache"
 )
 
+var Cache *cache.Cache
 var sources []image.Image
 
 func init() {
 	filepath.Walk("sources", load)
+	Cache = cache.New(5*time.Minute, 30*time.Second)
 }
 
 func load(path string, info os.FileInfo, err error) error {
@@ -36,19 +42,36 @@ func load(path string, info os.FileInfo, err error) error {
 
 // Write bunny in requested resolution from cache, generate if missing
 func Write(w io.Writer, x string, y string) error {
-	xi, _ := strconv.Atoi(x)
-	yi, _ := strconv.Atoi(y)
-
-	img, err := generate(xi, yi)
+	img, err := get(x, y)
 	if err != nil {
 		return err
 	}
-
 	err = jpeg.Encode(w, img, nil)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func get(x string, y string) (img image.Image, err error) {
+	t := time.Now()
+	xi, _ := strconv.Atoi(x)
+	yi, _ := strconv.Atoi(y)
+	key := fmt.Sprintf("%dx%d", xi, yi)
+	cached, found := Cache.Get(key)
+	if !found {
+		log.Print("cache miss")
+		img, err = generate(xi, yi)
+		if err != nil {
+			return nil, err
+		}
+		Cache.Set(key, img, 0)
+	} else {
+		log.Print("cache hit")
+		img = cached.(image.Image)
+	}
+	log.Printf("get(%s,%s) %s", x, y, time.Since(t))
+	return img, nil
 }
 
 func generate(x int, y int) (image.Image, error) {
